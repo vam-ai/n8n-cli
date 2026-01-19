@@ -9,10 +9,7 @@ vars:
     sh: date -u '+%Y-%m-%d_%H:%M:%S' || echo "unknown"
   GOEXE:
     sh: go env GOEXE || echo ""
-  LD_FLAGS: >-
-    -X github.com/edenreich/n8n-cli/config.Version={{.VERSION}}
-    -X github.com/edenreich/n8n-cli/config.BuildDate={{.BUILD_DATE}}
-    -X github.com/edenreich/n8n-cli/config.Commit={{.COMMIT}}
+  LD_FLAGS: 
 
 tasks:
   oas-download:

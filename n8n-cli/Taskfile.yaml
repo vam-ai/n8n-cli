@@ -38,6 +38,24 @@ tasks:
     desc: 'Run the n8n CLI'
     cmds:
       - go run -ldflags="{{.LD_FLAGS}}" ./main.go {{.CLI_ARGS}}
+  
+  clean:
+    desc: "Clean everything including dependencies"
+    cmds:
+      # Remove built binaries
+      - rm -rf ./bin
+      # Remove vendor directory if using vendor
+      - rm -rf ./vendor
+      # Remove Go module cache
+      - go clean -cache
+      - go clean -modcache
+      - go clean -testcache
+      # Remove go.sum to force re-download
+      - rm -f go.sum
+      # Clear build artifacts
+      - rm -rf dist/
+      - rm -rf coverage.out
+      - rm -rf *.out
 
   build:
     desc: 'Build the n8n CLI with version information'

@@ -4,4 +4,6 @@ dist
 bin
 .vscode
 .DS_Store
-n8n
+n8n/*.json
+n8n*json
+

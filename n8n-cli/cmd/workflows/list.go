@@ -24,8 +24,10 @@ package workflows
 import (
 	"encoding/json"
 	"fmt"
+	"sort"
 	"strings"
 	"text/tabwriter"
+	"time"
 
 	rootcmd "github.com/edenreich/n8n-cli/cmd"
 	"github.com/edenreich/n8n-cli/n8n"
@@ -44,6 +46,8 @@ const (
 var (
 	// outputFormat defines the output format flag for the list command
 	outputFormat string
+	// sortOrder defines the sort order for last updated
+	sortOrder string
 )
 
 // listCmd represents the list command
@@ -57,19 +61,20 @@ var ListCmd = &cobra.Command{
 
 func init() {
 	ListCmd.Flags().StringVarP(&outputFormat, "output", "o", formatTable, "Output format: table, json, or yaml")
+	ListCmd.Flags().StringVar(&sortOrder, "order", "asc", "Sort order for lastUpdated: asc or desc")
 	rootcmd.GetWorkflowsCmd().AddCommand(ListCmd)
 }
 
 // printWorkflowTable prints the workflows in a table format
 func printWorkflowTable(cmd *cobra.Command, workflows []n8n.Workflow) {
 	w := tabwriter.NewWriter(cmd.OutOrStdout(), 0, 0, 3, ' ', 0)
-	_, err := fmt.Fprintln(w, "ID\tNAME\tACTIVE")
+	_, err := fmt.Fprintln(w, "ID\tNAME\tACTIVE\tLAST_UPDATED")
 	if err != nil {
 		cmd.Println("Error printing workflow table:", err)
 		return
 	}
 	for _, workflow := range workflows {
-		var id, active string
+		var id, active, lastUpdated string
 		if workflow.Id != nil {
 			id = *workflow.Id
 		} else {
@@ -81,7 +86,14 @@ func printWorkflowTable(cmd *cobra.Command, workflows []n8n.Workflow) {
 		} else {
 			active = "No"
 		}
-		_, err := fmt.Fprintf(w, "%s\t%s\t%s\n", id, workflow.Name, active)
+
+		if workflow.UpdatedAt != nil {
+			lastUpdated = workflow.UpdatedAt.Format(time.RFC3339)
+		} else {
+			lastUpdated = "N/A"
+		}
+
+		_, err := fmt.Fprintf(w, "%s\t%s\t%s\t%s\n", id, workflow.Name, active, lastUpdated)
 		if err != nil {
 			cmd.Println("Error printing workflow table:", err)
 			return
@@ -133,15 +145,45 @@ func listWorkflows(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
+	workflows := *workflowList.Data
+	order := strings.ToLower(sortOrder)
+	if order == "" {
+		order = "asc"
+	}
+	if order != "asc" && order != "desc" {
+		return fmt.Errorf("unsupported sort order: %s. Supported orders: asc, desc", sortOrder)
+	}
+
+	sort.Slice(workflows, func(i, j int) bool {
+		left := workflows[i].UpdatedAt
+		right := workflows[j].UpdatedAt
+		if left == nil && right == nil {
+			return workflows[i].Name < workflows[j].Name
+		}
+		if left == nil {
+			return order == "asc"
+		}
+		if right == nil {
+			return order != "asc"
+		}
+		if left.Equal(*right) {
+			return workflows[i].Name < workflows[j].Name
+		}
+		if order == "asc" {
+			return left.Before(*right)
+		}
+		return left.After(*right)
+	})
+
 	format := strings.ToLower(outputFormat)
 
 	switch format {
 	case formatJSON:
-		return printWorkflowJSON(cmd, *workflowList.Data)
+		return printWorkflowJSON(cmd, workflows)
 	case formatYAML:
-		return printWorkflowYAML(cmd, *workflowList.Data)
+		return printWorkflowYAML(cmd, workflows)
 	case formatTable:
-		printWorkflowTable(cmd, *workflowList.Data)
+		printWorkflowTable(cmd, workflows)
 		return nil
 	default:
 		return fmt.Errorf("unsupported output format: %s. Supported formats: table, json, yaml", outputFormat)

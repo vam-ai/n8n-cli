@@ -1,0 +1,105 @@
+// Package unit contains unit tests for the n8n-cli
+package unit
+
+import (
+	"bytes"
+	"testing"
+
+	"github.com/edenreich/n8n-cli/cmd"
+	"github.com/edenreich/n8n-cli/config"
+	"github.com/stretchr/testify/assert"
+)
+
+func TestSanitizeFilename(t *testing.T) {
+	testCases := []struct {
+		input    string
+		expected string
+	}{
+		{"Simple Name", "Simple_Name"},
+		{"Name with spaces", "Name_with_spaces"},
+		{"Name/With/Slashes", "Name_With_Slashes"},
+		{"Name.With.Dots", "Name.With.Dots"},
+		{"Name-With-Dashes", "Name-With-Dashes"},
+		{"Name_With_Underscores", "Name_With_Underscores"},
+		{"Name With Special Chars: $%^&*", "Name_With_Special_Chars__$%^&_"},
+		{"Name With Emojis dY~?dY`?", "Name_With_Emojis_dY~_dY`_"},
+		{"CON", "_CON"},
+		{"lpt9.report", "_lpt9.report"},
+		{"Trailing dot.", "Trailing_dot"},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.input, func(t *testing.T) {
+			result := cmd.SanitizeFilename(tc.input)
+			assert.Equal(t, tc.expected, result, "Expected sanitized filename to match")
+		})
+	}
+}
+
+func TestFormatAPIBaseURL(t *testing.T) {
+	testCases := []struct {
+		name            string
+		instanceURL     string
+		expectedBaseURL string
+	}{
+		{
+			name:            "URL with trailing slash",
+			instanceURL:     "http://localhost:5678/",
+			expectedBaseURL: "http://localhost:5678/api/v1",
+		},
+		{
+			name:            "URL without trailing slash",
+			instanceURL:     "http://localhost:5678",
+			expectedBaseURL: "http://localhost:5678/api/v1",
+		},
+		{
+			name:            "URL with path",
+			instanceURL:     "http://localhost:5678/n8n",
+			expectedBaseURL: "http://localhost:5678/n8n/api/v1",
+		},
+		{
+			name:            "URL already with api/v1",
+			instanceURL:     "http://localhost:5678/api/v1",
+			expectedBaseURL: "http://localhost:5678/api/v1",
+		},
+		{
+			name:            "URL with api/v1 and trailing slash",
+			instanceURL:     "http://localhost:5678/api/v1/",
+			expectedBaseURL: "http://localhost:5678/api/v1",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			result := cmd.FormatAPIBaseURL(tc.instanceURL)
+			assert.Equal(t, tc.expectedBaseURL, result, "Expected correctly formatted API base URL")
+		})
+	}
+}
+
+func TestVersionCommand(t *testing.T) {
+	origVersion := config.Version
+	origBuildDate := config.BuildDate
+	origCommit := config.Commit
+
+	config.Version = "1.2.3"
+	config.BuildDate = "2025-05-13"
+	config.Commit = "abcdef123456"
+
+	buf := new(bytes.Buffer)
+	versionCmd := cmd.GetVersionCmd()
+	versionCmd.SetOut(buf)
+
+	err := versionCmd.RunE(versionCmd, []string{})
+	assert.NoError(t, err, "Expected no error when executing version command")
+
+	output := buf.String()
+	assert.Contains(t, output, "Version 1.2.3", "Version should be included in output")
+	assert.Contains(t, output, "Build Date: 2025-05-13", "Build date should be included in output")
+	assert.Contains(t, output, "Git Commit: abcdef123456", "Commit should be included in output")
+
+	config.Version = origVersion
+	config.BuildDate = origBuildDate
+	config.Commit = origCommit
+}
+

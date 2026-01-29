@@ -124,6 +124,7 @@ Usage:
 Available Commands:
   activate    Activate a workflow by ID
   deactivate  Deactivate a workflow by ID
+  delete      Delete a workflow by ID
   executions  Get execution history for workflows
   list        List JSON workflows in n8n instance
   pull        Pull a workflow from n8n into a local file
@@ -281,6 +282,16 @@ n8n workflows deactivate WORKFLOW_ID
 ```
 
 This command deactivates a workflow in the n8n instance, stopping it from being triggered by events.
+
+#### Delete
+
+Delete a specific workflow by ID:
+
+```bash
+n8n workflows delete WORKFLOW_ID
+```
+
+This command deletes a workflow from the n8n instance.
 
 ## Development
 

@@ -43,5 +43,8 @@ n8n workflows pull -d n8n --id "XXXXX"
 
 # Push the workflow to n8n
 n8n workflows push -f n8n/XXXX.json
+
+# To delete a workflow
+n8n workflow delete WORKFLOW_ID
 ```
 
